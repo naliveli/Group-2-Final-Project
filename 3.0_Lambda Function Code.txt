@@ -1,0 +1,72 @@
+Code : # ! pip install psycopg2
+import json
+import psycopg2
+import pymysql
+
+def lambda_handler(event, context):
+    # Redshift connection details
+    redshift_host = 'mywrkgrp.143545401680.us-east-1.redshift-serverless.amazonaws.com'
+    redshift_port = '5439'
+    redshift_db = 'dev'
+    redshift_user = 'admin'
+    redshift_password = 'Chinna51873'
+
+    # RDS MySQL connection details
+    mysql_host = 'myrdsdb.cmonbe2s33w9.us-east-1.rds.amazonaws.com'
+    mysql_port = 3306
+    mysql_db = 'IA_FINAL_PROJECT_DB'
+    mysql_user = 'admin'
+    mysql_password = 'Chinna51873'
+
+    try:
+        # Connect to Redshift
+        redshift_conn = psycopg2.connect(
+            host=redshift_host,
+            port=redshift_port,
+            dbname=redshift_db,
+            user=redshift_user,
+            password=redshift_password
+        )
+
+        redshift_cursor = redshift_conn.cursor()
+
+        # Fetch data from Redshift
+        
+        #redshift_cursor.execute('SELECT * FROM public.traffic_tickets_0rus22b8bh56s where "violation year"=2021 limit 100000' )
+        redshift_cursor.execute('SELECT * FROM public.vehicle_00l082gpab15s where year=2021 limit 100000' )
+        redshift_data = redshift_cursor.fetchall()
+
+        # Connect to RDS MySQL
+        mysql_conn = pymysql.connect(
+            host=mysql_host,
+            port=mysql_port,
+            db=mysql_db,
+            user=mysql_user,
+            password=mysql_password
+        )
+        mysql_cursor = mysql_conn.cursor()
+
+        # Load data into RDS MySQL
+        for row in redshift_data:
+            # Assuming the table schema is the same in Redshift and MySQL,
+            # you can directly insert the data into the corresponding table.
+            mysql_cursor.execute('INSERT INTO IA_FINAL_PROJECT_DB.vehicle_info_source3 VALUES (%s, %s, %s,%s,%s, %s, %s,%s,%s, %s, %s,%s,%s, %s, %s,%s,%s, %s, %s)', row)
+
+        # # Commit the changes
+        mysql_conn.commit()
+
+        # Close connections
+        mysql_cursor.close()
+        mysql_conn.close()
+        redshift_cursor.close()
+        redshift_conn.close()
+
+        return {
+            'statusCode': 200,
+            'body': 'Data loaded successfully'
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': 'Error: {}'.format(str(e))
+        }
